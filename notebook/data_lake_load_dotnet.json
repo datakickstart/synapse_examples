@@ -14,11 +14,13 @@
 			"executorCores": 4,
 			"numExecutors": 2,
 			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2"
 			}
 		},
 		"metadata": {
+			"saveOutput": true,
 			"language_info": {
 				"name": "csharp"
 			},
@@ -34,8 +36,10 @@
 				"sparkVersion": "2.4",
 				"nodeCount": 10,
 				"cores": 4,
-				"memory": 28
-			}
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
 		},
 		"cells": [
 			{
@@ -100,7 +104,7 @@
 					"\n",
 					"df.Write().Format(\"delta\").Mode(\"overwrite\").Save(taxi_zone_path);"
 				],
-				"execution_count": 7
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -143,7 +147,7 @@
 					"trip_df.Write().Mode(\"overwrite\").PartitionBy(\"year_month\").Format(\"delta\").Save(yellow_delta_path);\n",
 					""
 				],
-				"execution_count": 2
+				"execution_count": 3
 			},
 			{
 				"cell_type": "markdown",
@@ -159,7 +163,7 @@
 					"var test_df = spark.Read().Format(\"delta\").Load(yellow_delta_path).Limit(20);\n",
 					"test_df.Select(\"VendorID\", \"tpep_pickup_datetime\", \"tpep_dropoff_datetime\", \"passenger_count\").Show();"
 				],
-				"execution_count": 3
+				"execution_count": null
 			}
 		]
 	}
