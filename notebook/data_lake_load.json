@@ -1,0 +1,177 @@
+{
+	"name": "data_lake_load",
+	"properties": {
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "demo",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2"
+			}
+		},
+		"metadata": {
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/b99affbe-2256-409d-a682-c20a3963070b/resourceGroups/sandbox-2-rg/providers/Microsoft.Synapse/workspaces/synapsesandboxdv/bigDataPools/demo",
+				"name": "demo",
+				"type": "Spark",
+				"endpoint": "https://synapsesandboxdv.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/demo",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "2.4",
+				"nodeCount": 10,
+				"cores": 4,
+				"memory": 28,
+				"extraHeader": null
+			}
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql.functions import col, desc, regexp_replace, substring, to_date, from_json, explode, expr\n",
+					"from pyspark.sql.types import StructType, StringType\n",
+					"\n",
+					"taxi_zone_path = \"abfss://demo@dvtrainingadls.dfs.core.windows.net/nyctaxi/lookups/taxi_zone\"\n",
+					"taxi_rate_path = \"abfss://demo@dvtrainingadls.dfs.core.windows.net/nyctaxi/lookups/taxi_rate_code\"\n",
+					"yellow_delta_path = \"abfss://demo@dvtrainingadls.dfs.core.windows.net/nyctaxi/tripdata/yellow_delta\"\n",
+					"\n",
+					"date_format = \"yyyy-MM-dd HH:mm:ss\"\n",
+					"\n",
+					"# Define a schema that Spark understands. This is one of several ways to do it.\n",
+					"trip_schema = (\n",
+					"  StructType()\n",
+					"    .add('VendorID', 'integer')\n",
+					"    .add('tpep_pickup_datetime', 'string')\n",
+					"    .add('tpep_dropoff_datetime', 'string')\n",
+					"    .add('passenger_count', 'integer')\n",
+					"    .add('trip_distance', 'double')\n",
+					"    .add('RatecodeID', 'integer')\n",
+					"    .add('store_and_fwd_flag', 'string')\n",
+					"    .add('PULocationID', 'integer')\n",
+					"    .add('DOLocationID', 'integer')\n",
+					"    .add('payment_type', 'integer')\n",
+					"    .add('fare_amount', 'double')\n",
+					"    .add('extra', 'double')\n",
+					"    .add('mta_tax', 'double')\n",
+					"    .add('tip_amount', 'double')\n",
+					"    .add('tolls_amount', 'double')\n",
+					"    .add('improvement_surcharge', 'double')\n",
+					"    .add('total_amount', 'double')\n",
+					")"
+				],
+				"execution_count": 4
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"input_df = (\n",
+					"  spark.read\n",
+					"    .option(\"header\",\"true\")\n",
+					"    .option(\"inferSchema\", \"true\")\n",
+					"    .csv(\"abfss://demo@dvtrainingadls.dfs.core.windows.net/nyctaxi/lookups/taxi_zone_lookup.csv\") \n",
+					"  )\n",
+					"\n",
+					"df = input_df.withColumnRenamed(\"service_zone\", \"ServiceZone\")\n",
+					"\n",
+					"df.write.format(\"delta\").mode(\"overwrite\").save(taxi_zone_path)"
+				],
+				"execution_count": 6
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# If you want to delete the trips table before starting, keep following line uncommented\n",
+					"# dbutils.fs.rm(yellow_delta_path,recurse=True)\n",
+					"spark.conf.set(\"spark.sql.shuffle.partitions\", \"18\")\n",
+					"\n",
+					"input_df = (\n",
+					"  spark.read\n",
+					"    .option(\"header\",\"true\")\n",
+					"    .schema(trip_schema)\n",
+					"    .csv(\"abfss://demo@dvtrainingadls.dfs.core.windows.net/nyctaxi/tripdata/yellow/2019/yellow_tripdata_2019-*\")\n",
+					")\n",
+					"\n",
+					"# Take your pick on how to transform, withColumn or SQL Expressions. Only one of these is needed.\n",
+					"# Option A\n",
+					"# transformed_df = (\n",
+					"#   input_df\n",
+					"#     .withColumn(\"year_month\", regexp_replace(substring(\"tpep_pickup_datetime\",1,7), '-', '_'))\n",
+					"#     .withColumn(\"pickup_dt\", to_date(\"tpep_pickup_datetime\", date_format)) \n",
+					"#     .withColumn(\"dropoff_dt\", to_date(\"tpep_dropoff_datetime\", date_format))\n",
+					"#     .withColumn(\"tip_pct\", col(\"tip_amount\") / col(\"total_amount\"))\n",
+					"# )\n",
+					"  \n",
+					"# Option B\n",
+					"transformed_df = input_df.selectExpr(\n",
+					"                  \"*\",\n",
+					"                  \"replace(left(tpep_pickup_datetime, 7),'-','_') as year_month\",\n",
+					"                  f\"to_date(tpep_pickup_datetime, '{date_format}') as pickup_dt\",\n",
+					"                  f\"to_date(tpep_dropoff_datetime, '{date_format}') as dropoff_dt\",\n",
+					"                  f\"tip_amount/total_amount as tip_pct\")\n",
+					"\n",
+					"zone_df = spark.read.format(\"delta\").load(taxi_zone_path)\n",
+					"\n",
+					"# Join to bring in Taxi Zone data\n",
+					"trip_df = (\n",
+					"   transformed_df\n",
+					"     .join(zone_df, transformed_df.PULocationID == zone_df.LocationID, how=\"left\").drop(\"LocationID\")\n",
+					"     .withColumnRenamed(\"Burough\", \"PickupBurrough\")\n",
+					"     .withColumnRenamed(\"Zone\", \"PickupZone\")\n",
+					"     .withColumnRenamed(\"ServiceZone\", \"PickupServiceZone\")\n",
+					")\n",
+					"\n",
+					"trip_df.write.mode(\"overwrite\").partitionBy(\"year_month\").format(\"delta\").save(yellow_delta_path)\n",
+					""
+				],
+				"execution_count": 7
+			},
+			{
+				"cell_type": "markdown",
+				"source": [
+					"## Streaming\n",
+					"At this time streaming with Azure Synapse serverless Apache Spark is not recommended for most cases. Instead use Azure Stream Analytics or Azure Databricks.\n",
+					""
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# Read from Kafka, format will be a kafka record\n",
+					"input_df = spark.readStream.format(\"delta\").load(yellow_delta_path)\n",
+					"\n",
+					"queryStream = (input_df.writeStream\n",
+					"    .format(\"delta\")\n",
+					"    .option(\"checkpointLocation\", \"abfss://demo@dvtrainingadls.dfs.core.windows.net/delta/events/_checkpoints/synapse_streaming_demo_1\")\n",
+					"    .start(\"abfss://demo@dvtrainingadls.dfs.core.windows.net/nyctaxi/tripdata/yellow_delta_synapse_output\")\n",
+					")\n",
+					"\n",
+					"queryStream.awaitTermination()\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"df = spark.read.format(\"delta\").load(\"abfss://demo@dvtrainingadls.dfs.core.windows.net/nyctaxi/tripdata/yellow_delta_synapse_output\").limit(20)\n",
+					"df.show()"
+				],
+				"execution_count": null
+			}
+		]
+	}
+}

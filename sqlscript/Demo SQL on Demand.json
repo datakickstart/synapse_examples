@@ -1,0 +1,17 @@
+{
+	"name": "Demo SQL on Demand",
+	"properties": {
+		"description": "Create data source and example queries\n",
+		"content": {
+			"query": "-- CREATE EXTERNAL DATA SOURCE [demo_adls] WITH\n-- (\n-- \tLOCATION   = 'https://dvtrainingadls.dfs.core.windows.net/demo',\n-- );\n\nSELECT TOP 10 *\nFROM OPENROWSET(BULK 'nyc_taxi/yellow_trips_detail/year_month=2018_01/*.snappy.parquet',\n                DATA_SOURCE = 'demo_adls',\n      \t\t\tFORMAT='PARQUET') AS nyc\nWHERE VendorID = 2\n",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"name": "demo",
+				"type": "SqlOnDemand"
+			}
+		},
+		"type": "SqlQuery"
+	}
+}

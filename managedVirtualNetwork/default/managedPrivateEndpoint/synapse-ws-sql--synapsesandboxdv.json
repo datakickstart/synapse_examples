@@ -1,0 +1,10 @@
+{
+	"name": "synapse-ws-sql--synapsesandboxdv",
+	"properties": {
+		"privateLinkResourceId": "/subscriptions/b99affbe-2256-409d-a682-c20a3963070b/resourceGroups/sandbox-2-rg/providers/Microsoft.Synapse/workspaces/synapsesandboxdv",
+		"groupId": "sql",
+		"fqdns": [
+			"synapsesandboxdv.sql.azuresynapse.net"
+		]
+	}
+}

@@ -1,0 +1,10 @@
+{
+	"name": "synapse-ws-sqlOnDemand--synapsesandboxdv",
+	"properties": {
+		"privateLinkResourceId": "/subscriptions/b99affbe-2256-409d-a682-c20a3963070b/resourceGroups/sandbox-2-rg/providers/Microsoft.Synapse/workspaces/synapsesandboxdv",
+		"groupId": "sqlOnDemand",
+		"fqdns": [
+			"synapsesandboxdv-ondemand.sql.azuresynapse.net"
+		]
+	}
+}

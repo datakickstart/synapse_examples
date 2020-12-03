@@ -1,0 +1,16 @@
+{
+	"name": "SQL script 2",
+	"properties": {
+		"content": {
+			"query": "IF NOT EXISTS (SELECT * FROM sys.external_file_formats WHERE name = 'SynapseParquetFormat') \n\tCREATE EXTERNAL FILE FORMAT [SynapseParquetFormat] \n\tWITH ( FORMAT_TYPE = PARQUET)\nGO\n\nIF NOT EXISTS (SELECT * FROM sys.external_data_sources WHERE name = 'demo_dvtrainingadls_dfs_core_windows_net') \n\tCREATE EXTERNAL DATA SOURCE [demo_dvtrainingadls_dfs_core_windows_net] \n\tWITH (\n\t\tLOCATION   = 'https://dvtrainingadls.dfs.core.windows.net/demo', \n\t)\nGo\n\nDROP EXTERNAL TABLE yellow_trips_detail;\n\nCREATE EXTERNAL TABLE yellow_trips_detail (\n\t[VendorID] int,\n\t[tpep_pickup_datetime] datetime2(7),\n\t[tpep_dropoff_datetime] datetime2(7),\n\t[passenger_count] int,\n\t[trip_distance] float,\n\t[RatecodeID] int,\n\t[store_and_fwd_flag] varchar(8000),\n\t[PULocationID] int,\n\t[DOLocationID] int,\n\t[payment_type] int,\n\t[fare_amount] float,\n\t[extra] float,\n\t[mta_tax] float,\n\t[tip_amount] float,\n\t[tolls_amount] float,\n\t[improvement_surcharge] float,\n\t[total_amount] float,\n\t[pickup_dt] datetime2(7),\n\t[dropoff_dt] datetime2(7)\n\t)\n\tWITH (\n\tLOCATION = 'nyc_taxi/yellow_trips_detail/year_month=2018_01/part-*.snappy.parquet',\n\tDATA_SOURCE = [demo_dvtrainingadls_dfs_core_windows_net],\n\tFILE_FORMAT = [SynapseParquetFormat]\n\t)\nGO\n\nSELECT TOP 100 * FROM yellow_trips_detail\nGO\n\n",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"name": "demo",
+				"type": "SqlOnDemand"
+			}
+		},
+		"type": "SqlQuery"
+	}
+}

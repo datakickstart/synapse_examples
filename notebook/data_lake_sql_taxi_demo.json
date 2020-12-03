@@ -1,0 +1,319 @@
+{
+	"name": "data_lake_sql_taxi_demo",
+	"properties": {
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "demo",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2"
+			}
+		},
+		"metadata": {
+			"language_info": {
+				"name": "sql"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/b99affbe-2256-409d-a682-c20a3963070b/resourceGroups/sandbox-2-rg/providers/Microsoft.Synapse/workspaces/synapsesandboxdv/bigDataPools/demo",
+				"name": "demo",
+				"type": "Spark",
+				"endpoint": "https://synapsesandboxdv.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/demo",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "2.4",
+				"nodeCount": 10,
+				"cores": 4,
+				"memory": 28
+			}
+		},
+		"cells": [
+			{
+				"cell_type": "markdown",
+				"source": [
+					"## Synapse Spark NYC Taxi queries\n",
+					"This notebooks demonstrates how Spark SQL can be used to interact with a data lake. This is the recommended starting point for many data scientists and analysts to work with a data lake.\n",
+					"\n",
+					"This notebook and other examples are avilable at https://github.com/datakickstart/synapse_examples"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"diagram": {
+						"activateDiagramType": 1,
+						"chartConfig": {
+							"category": "bar",
+							"keys": [],
+							"values": [],
+							"yLabel": "",
+							"xLabel": "",
+							"aggregation": "SUM",
+							"aggByBackend": false
+						},
+						"aggData": "{}",
+						"isSummary": false,
+						"previewData": {
+							"filter": null
+						},
+						"isSql": true
+					}
+				},
+				"source": [
+					"DROP TABLE IF EXISTS synapse_trips_external_csv"
+				],
+				"execution_count": 0
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"diagram": {
+						"activateDiagramType": 1,
+						"chartConfig": {
+							"category": "bar",
+							"keys": [],
+							"values": [],
+							"yLabel": "",
+							"xLabel": "",
+							"aggregation": "SUM",
+							"aggByBackend": false
+						},
+						"aggData": "{}",
+						"isSummary": false,
+						"previewData": {
+							"filter": null
+						},
+						"isSql": true
+					}
+				},
+				"source": [
+					"CREATE EXTERNAL TABLE synapse_trips_external_csv\n",
+					"(\n",
+					"VendorID int,\n",
+					"tpep_pickup_datetime string,\n",
+					"tpep_dropoff_datetime string,\n",
+					"passenger_count int,\n",
+					"trip_distance float,\n",
+					"RatecodeID int,\n",
+					"store_and_fwd_flag string,\n",
+					"PULocationID int,\n",
+					"DOLocationID int,\n",
+					"payment_type int,\n",
+					"fare_amount float,\n",
+					"extra float,\n",
+					"mta_tax float,\n",
+					"tip_amount int,\n",
+					"tolls_amount int,\n",
+					"improvement_surcharge float,\n",
+					"total_amount float,\n",
+					"congestion_surcharge string\n",
+					")\n",
+					"ROW FORMAT DELIMITED FIELDS TERMINATED BY ','\n",
+					"STORED AS TEXTFILE\n",
+					"TBLPROPERTIES (\"skip.header.line.count\"=\"1\")\n",
+					"LOCATION \"abfss://demo@dvtrainingadls.dfs.core.windows.net/nyctaxi/tripdata/yellow/2019\"\n",
+					""
+				],
+				"execution_count": 1
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"diagram": {
+						"activateDiagramType": 1,
+						"chartConfig": {
+							"category": "bar",
+							"keys": [],
+							"values": [
+								"count(1)"
+							],
+							"yLabel": "count(1)",
+							"xLabel": "",
+							"aggregation": "SUM",
+							"aggByBackend": false
+						},
+						"aggData": "{\"count(1)\":{\"\":84399031}}",
+						"isSummary": false,
+						"previewData": {
+							"filter": null
+						},
+						"isSql": true
+					}
+				},
+				"source": [
+					"SELECT count(1) from synapse_trips_external_csv"
+				],
+				"execution_count": 2
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"diagram": {
+						"activateDiagramType": 1,
+						"chartConfig": {
+							"category": "bar",
+							"keys": [
+								"tpep_pickup_datetime"
+							],
+							"values": [
+								"VendorID"
+							],
+							"yLabel": "VendorID",
+							"xLabel": "tpep_pickup_datetime",
+							"aggregation": "SUM",
+							"aggByBackend": false
+						},
+						"aggData": "{\"VendorID\":{\"2019-12-01 00:00:02\":2,\"2019-12-01 00:00:10\":2,\"2019-12-01 00:00:11\":2,\"2019-12-01 00:00:34\":2,\"2019-12-01 00:01:13\":2,\"2019-12-01 00:01:47\":2,\"2019-12-01 00:03:06\":2,\"2019-12-01 00:17:53\":2,\"2019-12-01 00:33:23\":2,\"2019-12-01 00:53:25\":2}}",
+						"isSummary": false,
+						"previewData": {
+							"filter": null
+						},
+						"isSql": true
+					}
+				},
+				"source": [
+					"SELECT * \n",
+					"FROM synapse_trips_external_csv\n",
+					"WHERE tpep_pickup_datetime between '2019-12-01' and '2019-12-02' \n",
+					"LIMIT 10"
+				],
+				"execution_count": 3
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"diagram": {
+						"activateDiagramType": 1,
+						"chartConfig": {
+							"category": "bar",
+							"keys": [
+								"col_name"
+							],
+							"values": [
+								"col_name"
+							],
+							"yLabel": "col_name",
+							"xLabel": "col_name",
+							"aggregation": "COUNT",
+							"aggByBackend": false
+						},
+						"aggData": "{\"col_name\":{\"DOLocationID\":1,\"PULocationID\":1,\"RatecodeID\":1,\"VendorID\":1,\"congestion_surcharge\":1,\"extra\":1,\"fare_amount\":1,\"improvement_surcharge\":1,\"mta_tax\":1,\"passenger_count\":1,\"payment_type\":1,\"store_and_fwd_flag\":1,\"tip_amount\":1,\"tolls_amount\":1,\"total_amount\":1,\"tpep_dropoff_datetime\":1,\"tpep_pickup_datetime\":1,\"trip_distance\":1}}",
+						"isSummary": false,
+						"previewData": {
+							"filter": null
+						},
+						"isSql": true
+					}
+				},
+				"source": [
+					"DESCRIBE synapse_trips_external_csv"
+				],
+				"execution_count": 4
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"diagram": {
+						"activateDiagramType": 1,
+						"chartConfig": {
+							"category": "bar",
+							"keys": [],
+							"values": [],
+							"yLabel": "",
+							"xLabel": "",
+							"aggregation": "SUM",
+							"aggByBackend": false
+						},
+						"aggData": "{}",
+						"isSummary": false,
+						"previewData": {
+							"filter": null
+						},
+						"isSql": true
+					}
+				},
+				"source": [
+					"DROP TABLE IF EXISTS synapse_yellow_trips_delta"
+				],
+				"execution_count": 5
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"diagram": {
+						"activateDiagramType": 1,
+						"chartConfig": {
+							"category": "bar",
+							"keys": [],
+							"values": [],
+							"yLabel": "",
+							"xLabel": "",
+							"aggregation": "SUM",
+							"aggByBackend": false
+						},
+						"aggData": "{}",
+						"isSummary": false,
+						"previewData": {
+							"filter": null
+						},
+						"isSql": true
+					}
+				},
+				"source": [
+					"CREATE TABLE synapse_yellow_trips_delta USING DELTA PARTITIONED BY (year_month)\n",
+					"Select replace(left(tpep_pickup_datetime, 7),'-','_') as year_month, * from synapse_trips_external_csv"
+				],
+				"execution_count": 6
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"diagram": {
+						"activateDiagramType": 1,
+						"chartConfig": {
+							"category": "bar",
+							"keys": [
+								"record_count"
+							],
+							"values": [
+								"payment_type"
+							],
+							"yLabel": "payment_type",
+							"xLabel": "record_count",
+							"aggregation": "SUM",
+							"aggByBackend": false
+						},
+						"aggData": "{\"payment_type\":{\"152\":2,\"203\":1}}",
+						"isSummary": false,
+						"previewData": {
+							"filter": null
+						},
+						"isSql": true
+					}
+				},
+				"source": [
+					"SELECT \n",
+					"  payment_type,\n",
+					"  count(1) record_count,\n",
+					"  avg(tip_amount) avg_tip\n",
+					"FROM synapse_yellow_trips_delta\n",
+					"WHERE payment_type is not null\n",
+					"and year_month='2018_12'\n",
+					"GROUP BY payment_type\n",
+					"ORDER BY record_count desc"
+				],
+				"execution_count": 7
+			}
+		]
+	}
+}
