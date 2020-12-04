@@ -14,11 +14,13 @@
 			"executorCores": 4,
 			"numExecutors": 2,
 			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2"
 			}
 		},
 		"metadata": {
+			"saveOutput": true,
 			"language_info": {
 				"name": "python"
 			},
@@ -35,8 +37,9 @@
 				"nodeCount": 10,
 				"cores": 4,
 				"memory": 28,
-				"extraHeader": null
-			}
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
 		},
 		"cells": [
 			{
@@ -73,7 +76,7 @@
 					"    .add('total_amount', 'double')\n",
 					")"
 				],
-				"execution_count": 4
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
