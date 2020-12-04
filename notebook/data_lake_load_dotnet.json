@@ -108,6 +108,29 @@
 			},
 			{
 				"cell_type": "code",
+				"source": [],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%%pyspark\n",
+					"df = (\n",
+					"    spark.option(\"header\",\"true\")\n",
+					"    .option(\"inferSchema\", \"true\")\n",
+					"    .csv(\"abfss://demo@dvtrainingadls.dfs.core.windows.net/nyctaxi/lookups/taxi_zone_lookup.csv\")\n",
+					")\n",
+					"df.show()"
+				],
+				"execution_count": 1
+			},
+			{
+				"cell_type": "code",
 				"source": [
 					"// If you want to delete the trips table before starting, keep following line uncommented\n",
 					"// dbutils.fs.rm(yellow_delta_path,recurse=True)\n",
