@@ -45,7 +45,7 @@
 			{
 				"cell_type": "markdown",
 				"source": [
-					"## Batch load to Data Lake using C# Spark\n",
+					"## .NET Spark (C#): Load to Data Lake\n",
 					"\n",
 					"A good reference for additional syntax examples: https://github.com/dotnet/spark/blob/master/examples/Microsoft.Spark.CSharp.Examples/Sql/Batch/Basic.cs\n",
 					""
