@@ -61,14 +61,14 @@
 					"using static Microsoft.Spark.Sql.Functions;\n",
 					"\n",
 					"\n",
-					"var taxi_zone_path = \"abfss://demo@dvtrainingadls.dfs.core.windows.net/nyctaxi/lookups/taxi_zone\";\n",
-					"var taxi_rate_path = \"abfss://demo@dvtrainingadls.dfs.core.windows.net/nyctaxi/lookups/taxi_rate_code\";\n",
-					"var yellow_delta_path = \"abfss://demo@dvtrainingadls.dfs.core.windows.net/nyctaxi/tripdata/yellow_delta\";\n",
+					"var taxiZonePath = \"abfss://demo@dvtrainingadls.dfs.core.windows.net/nyctaxi/lookups/taxi_zone\";\n",
+					"var taxiRatePath = \"abfss://demo@dvtrainingadls.dfs.core.windows.net/nyctaxi/lookups/taxi_rate_code\";\n",
+					"var yellowDeltaPath = \"abfss://demo@dvtrainingadls.dfs.core.windows.net/nyctaxi/tripdata/yellow_delta\";\n",
 					"\n",
-					"var date_format = \"yyyy-MM-dd HH:mm:ss\";\n",
+					"var dateFormat = \"yyyy-MM-dd HH:mm:ss\";\n",
 					"\n",
 					"// Define a schema that Spark understands. This is one of several ways to do it.\n",
-					"var trip_schema = new StructType(new[]\n",
+					"var tripSchema = new StructType(new[]\n",
 					"{\n",
 					"    new StructField(\"VendorID\", new IntegerType()),\n",
 					"    new StructField(\"tpep_pickup_datetime\", new StringType()),\n",
@@ -89,88 +89,62 @@
 					"    new StructField(\"total_amount\", new DoubleType())\n",
 					"});"
 				],
-				"execution_count": 1
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"var input_df = spark.Read()\n",
+					"DataFrame inputDF = spark.Read()\n",
 					"    .Option(\"header\",\"true\")\n",
 					"    .Option(\"inferSchema\", \"true\")\n",
 					"    .Csv(\"abfss://demo@dvtrainingadls.dfs.core.windows.net/nyctaxi/lookups/taxi_zone_lookup.csv\"); \n",
 					"\n",
 					"\n",
-					"var df = input_df.WithColumnRenamed(\"service_zone\", \"ServiceZone\");\n",
+					"var renamedDF = input_df.WithColumnRenamed(\"service_zone\", \"ServiceZone\");\n",
 					"\n",
-					"df.Write().Format(\"delta\").Mode(\"overwrite\").Save(taxi_zone_path);"
+					"renamedDF.Write().Format(\"delta\").Mode(\"overwrite\").Save(taxi_zone_path);"
 				],
-				"execution_count": 2
-			},
-			{
-				"cell_type": "code",
-				"source": [],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"source": [],
-				"execution_count": null
+				"execution_count": 10
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"%%pyspark\n",
-					"df = (\n",
-					"    spark.option(\"header\",\"true\")\n",
-					"    .option(\"inferSchema\", \"true\")\n",
-					"    .csv(\"abfss://demo@dvtrainingadls.dfs.core.windows.net/nyctaxi/lookups/taxi_zone_lookup.csv\")\n",
-					")\n",
-					"df.show()"
-				],
-				"execution_count": 1
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"// If you want to delete the trips table before starting, keep following line uncommented\n",
-					"// dbutils.fs.rm(yellow_delta_path,recurse=True)\n",
 					"spark.Conf().Set(\"spark.sql.shuffle.partitions\", \"18\");\n",
 					"\n",
-					"var input_df = spark.Read()\n",
+					"DataFrame inputDF = spark.Read()\n",
 					"    .Option(\"header\",\"true\")\n",
-					"    .Schema(trip_schema)\n",
+					"    .Schema(tripSchema)\n",
 					"    .Csv(\"abfss://demo@dvtrainingadls.dfs.core.windows.net/nyctaxi/tripdata/yellow/2019/yellow_tripdata_2019-*\");\n",
-					"// .Option(\"inferSchema\", \"true\")\n",
 					"\n",
 					"// Take your pick on how to transform, withColumn or SQL Expressions. Only one of these is needed.\n",
 					"// Option A\n",
-					"var transformed_df = input_df\n",
+					"var transformedDF = inputDF\n",
 					"    .WithColumn(\"year_month\", RegexpReplace(Substring(Col(\"tpep_pickup_datetime\"),1,7), \"-\", \"_\"))\n",
 					"    .WithColumn(\"pickup_dt\", ToDate(Col(\"tpep_pickup_datetime\"), date_format)) \n",
 					"    .WithColumn(\"dropoff_dt\", ToDate(Col(\"tpep_dropoff_datetime\"), date_format))\n",
 					"    .WithColumn(\"tip_pct\", Col(\"tip_amount\") / Col(\"total_amount\"));\n",
 					"  \n",
 					"// Option B\n",
-					"// var transformed_df = input_df.SelectExpr(\n",
+					"// var transformedDF = inputDF.SelectExpr(\n",
 					"//                   \"*\",\n",
 					"//                   \"replace(left(tpep_pickup_datetime, 7),\\\"-\\\",\\\"_\\\") as year_month\",\n",
 					"//                   $\"to_date(tpep_pickup_datetime, \\\"{date_format}\\\") as pickup_dt\",\n",
 					"//                   $\"to_date(tpep_dropoff_datetime, \\\"{date_format}\\\") as dropoff_dt\",\n",
 					"//                   $\"tip_amount/total_amount as tip_pct\");\n",
 					"\n",
-					"var zone_df = spark.Read().Format(\"delta\").Load(taxi_zone_path);\n",
+					"DataFrame zoneDF = spark.Read().Format(\"delta\").Load(taxiZonePath);\n",
 					"\n",
 					"// Join to bring in Taxi Zone data\n",
-					"var trip_df = transformed_df\n",
-					"     .Join(zone_df, transformed_df[\"PULocationID\"] == zone_df[\"LocationID\"], \"left\").Drop(\"LocationID\")\n",
+					"var tripDF = transformedDF\n",
+					"     .Join(zoneDF, transformedDF[\"PULocationID\"] == zoneDF[\"LocationID\"], \"left\").Drop(\"LocationID\")\n",
 					"     .WithColumnRenamed(\"Burough\", \"PickupBurrough\")\n",
 					"     .WithColumnRenamed(\"Zone\", \"PickupZone\")\n",
 					"     .WithColumnRenamed(\"ServiceZone\", \"PickupServiceZone\");\n",
 					"\n",
-					"trip_df.Write().Mode(\"overwrite\").PartitionBy(\"year_month\").Format(\"delta\").Save(yellow_delta_path);\n",
+					"tripDF.Write().Mode(\"overwrite\").PartitionBy(\"year_month\").Format(\"delta\").Save(yellow_delta_path);\n",
 					""
 				],
-				"execution_count": 3
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -183,10 +157,10 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"var test_df = spark.Read().Format(\"delta\").Load(yellow_delta_path).Limit(20);\n",
-					"test_df.Select(\"VendorID\", \"tpep_pickup_datetime\", \"tpep_dropoff_datetime\", \"passenger_count\").Show();"
+					"var testDF = spark.Read().Format(\"delta\").Load(yellowDeltaPath).Limit(20);\n",
+					"testDF.Select(\"VendorID\", \"tpep_pickup_datetime\", \"tpep_dropoff_datetime\", \"passenger_count\").Show();"
 				],
-				"execution_count": null
+				"execution_count": 7
 			}
 		]
 	}
