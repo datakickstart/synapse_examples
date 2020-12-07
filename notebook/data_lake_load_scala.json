@@ -41,6 +41,119 @@
 			},
 			"sessionKeepAliveTimeout": 30
 		},
-		"cells": []
+		"cells": [
+			{
+				"cell_type": "markdown",
+				"source": [
+					"## Scala Spark: Load to Data Lake"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"import org.apache.spark.sql.functions._\n",
+					"import org.apache.spark.sql.types.{StructType, StringType}\n",
+					"\n",
+					"import spark.implicits._\n",
+					"\n",
+					"val taxiZonePath = \"abfss://demo@dvtrainingadls.dfs.core.windows.net/nyctaxi/lookups/taxi_zone\"\n",
+					"val taxiRatePath = \"abfss://demo@dvtrainingadls.dfs.core.windows.net/nyctaxi/lookups/taxi_rate_code\"\n",
+					"val yellowDeltaPath = \"abfss://demo@dvtrainingadls.dfs.core.windows.net/nyctaxi/tripdata/yellow_delta\"\n",
+					"\n",
+					"val dateFormat = \"yyyy-MM-dd HH:mm:ss\"\n",
+					"\n",
+					"// Define a schema that Spark understands. This is one of several ways to do it.\n",
+					"val tripSchema = (new StructType)\n",
+					"    .add(\"VendorID\", \"integer\")\n",
+					"    .add(\"tpep_pickup_datetime\", \"string\")\n",
+					"    .add(\"tpep_dropoff_datetime\", \"string\")\n",
+					"    .add(\"passenger_count\", \"integer\")\n",
+					"    .add(\"trip_distance\", \"double\")\n",
+					"    .add(\"RatecodeID\", \"integer\")\n",
+					"    .add(\"store_and_fwd_flag\", \"string\")\n",
+					"    .add(\"PULocationID\", \"integer\")\n",
+					"    .add(\"DOLocationID\", \"integer\")\n",
+					"    .add(\"payment_type\", \"integer\")\n",
+					"    .add(\"fare_amount\", \"double\")\n",
+					"    .add(\"extra\", \"double\")\n",
+					"    .add(\"mta_tax\", \"double\")\n",
+					"    .add(\"tip_amount\", \"double\")\n",
+					"    .add(\"tolls_amount\", \"double\")\n",
+					"    .add(\"improvement_surcharge\", \"double\")\n",
+					"    .add(\"total_amount\", \"double\")\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"val inputDF = spark.read\n",
+					"    .option(\"header\",\"true\")\n",
+					"    .option(\"inferSchema\", \"true\")\n",
+					"    .csv(\"abfss://demo@dvtrainingadls.dfs.core.windows.net/nyctaxi/lookups/taxi_zone_lookup.csv\") \n",
+					"\n",
+					"val renamedDF = inputDF.withColumnRenamed(\"service_zone\", \"ServiceZone\")\n",
+					"\n",
+					"renamedDF.write.format(\"delta\").mode(\"overwrite\").save(taxiZonePath)\n",
+					"\n",
+					"renamedDF.show()"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"val inputDF = spark.read\n",
+					"    .option(\"header\",\"true\")\n",
+					"    .schema(trip_schema)\n",
+					"    .csv(\"abfss://demo@dvtrainingadls.dfs.core.windows.net/nyctaxi/tripdata/yellow/2019/yellow_tripdata_2019-*\")\n",
+					"\n",
+					"// Take your pick on how to transform, withColumn or SQL Expressions. Only one of these is needed.\n",
+					"\n",
+					"// Option A\n",
+					"//  val transformedDF = inputDF\n",
+					"//      .withColumn(\"year_month\", regexp_replace(substring(\"tpep_pickup_datetime\",1,7), '-', '_'))\n",
+					"//      .withColumn(\"pickup_dt\", to_date(\"tpep_pickup_datetime\", date_format)) \n",
+					"//      .withColumn(\"dropoff_dt\", to_date(\"tpep_dropoff_datetime\", date_format))\n",
+					"//      .withColumn(\"tip_pct\", col(\"tip_amount\") / col(\"total_amount\"))\n",
+					"  \n",
+					"// Option B\n",
+					"val transformedDF = inputDF.selectExpr(\n",
+					"                  \"*\",\n",
+					"                  \"replace(left(tpep_pickup_datetime, 7),'-','_') as year_month\",\n",
+					"                  s\"to_date(tpep_pickup_datetime, '$dateFormat') as pickup_dt\",\n",
+					"                  s\"to_date(tpep_dropoff_datetime, '$dateFormat') as dropoff_dt\",\n",
+					"                  s\"tip_amount/total_amount as tip_pct\")\n",
+					"\n",
+					"val zoneDF = spark.read.format(\"delta\").load(taxiZonePath)\n",
+					"\n",
+					"// Join to bring in Taxi Zone data\n",
+					"val tripDF = transformedDF.as(\"t\")\n",
+					"     .join(zoneDF.as(\"z\"), expr(\"t.PULocationID == z.LocationID\"), joinType=\"left\").drop(\"LocationID\")\n",
+					"     .withColumnRenamed(\"Burough\", \"PickupBurrough\")\n",
+					"     .withColumnRenamed(\"Zone\", \"PickupZone\")\n",
+					"     .withColumnRenamed(\"ServiceZone\", \"PickupServiceZone\")\n",
+					"\n",
+					"tripDF.write.mode(\"overwrite\").partitionBy(\"year_month\").format(\"delta\").save(yellowDeltaPath)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"source": [
+					"## Test read\n",
+					"Simple test read of the delta formatted data that was just saved."
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"val testDF = spark.read().format(\"delta\").load(yellowDeltaPath).Limit(20);\n",
+					"testDF.select(\"VendorID\", \"tpep_pickup_datetime\", \"tpep_dropoff_datetime\", \"passenger_count\").show();"
+				],
+				"execution_count": null
+			}
+		]
 	}
 }
